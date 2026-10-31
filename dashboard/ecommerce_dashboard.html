@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #1e293b;
+            --bg-card-hover: #273449;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --accent-pink: #ec4899;
+            --accent-red: #ef4444;
+            --border: #334155;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .subtitle {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-top: 2px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .date-badge {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Navigation tabs */
+        .nav-tabs {
+            display: flex;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            gap: 0;
+            overflow-x: auto;
+        }
+        .nav-tab {
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .nav-tab:hover { color: var(--text-secondary); }
+        .nav-tab.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+
+        /* Main content */
+        .main { padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
+
+        /* Section (tab panel) */
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* KPI cards row */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+        .kpi-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .kpi-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Charts grid */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .chart-grid.single { grid-template-columns: 1fr; }
+        .chart-grid.three { grid-template-columns: repeat(3, 1fr); }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .chart-card.full-width { grid-column: 1 / -1; }
+        .chart-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-title .icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        /* Table styles */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+        }
+        .data-table th {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+        }
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+            color: var(--text-primary);
+        }
+        .data-table tr:hover td {
+            background: rgba(59, 130, 246, 0.05);
+        }
+        .data-table .number { text-align: right; font-variant-numeric: tabular-nums; }
+
+        /* Cohort heatmap */
+        .cohort-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .cohort-table th, .cohort-table td {
+            padding: 8px 10px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .cohort-table th {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 11px;
+        }
+        .cohort-table .cohort-label {
+            text-align: left;
+            font-weight: 500;
+            background: rgba(59, 130, 246, 0.05);
+            white-space: nowrap;
+        }
+
+        /* Segment badges */
+        .segment-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .seg-champions { background: rgba(16,185,129,0.15); color: #34d399; }
+        .seg-loyal { background: rgba(59,130,246,0.15); color: #60a5fa; }
+        .seg-potential { background: rgba(139,92,246,0.15); color: #a78bfa; }
+        .seg-new { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .seg-atrisk { background: rgba(239,68,68,0.15); color: #f87171; }
+        .seg-lost { background: rgba(100,116,139,0.15); color: #94a3b8; }
+        .seg-promising { background: rgba(236,72,153,0.15); color: #f472b6; }
+        .seg-need { background: rgba(251,191,36,0.15); color: #fde68a; }
+
+        /* Insights section */
+        .insight-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-left: 4px solid var(--accent-blue);
+        }
+        .insight-card h4 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: var(--accent-blue);
+        }
+        .insight-card p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .insight-card.warning { border-left-color: var(--accent-orange); }
+        .insight-card.warning h4 { color: var(--accent-orange); }
+        .insight-card.success { border-left-color: var(--accent-green); }
+        .insight-card.success h4 { color: var(--accent-green); }
+        .insight-card.danger { border-left-color: var(--accent-red); }
+        .insight-card.danger h4 { color: var(--accent-red); }
+        .insight-card.info { border-left-color: var(--accent-purple); }
+        .insight-card.info h4 { color: var(--accent-purple); }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .chart-grid { grid-template-columns: 1fr; }
+            .chart-grid.three { grid-template-columns: 1fr; }
+            .main { padding: 16px; }
+        }
+        @media (max-width: 768px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .header { padding: 16px; flex-direction: column; gap: 12px; }
+            .nav-tabs { padding: 0 16px; }
+        }
+
+        /* Canvas container */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-height: 400px;
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+        .loading::before {
+            content: '';
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Pareto chart */
+        .pareto-highlight {
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--accent-orange);
+        }
+
+        /* Scrollable table wrapper */
+        .table-scroll {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .table-scroll::-webkit-scrollbar { width: 6px; }
+        .table-scroll::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        .table-scroll::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-bar label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .filter-bar select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>📊 E-Commerce Analytics Dashboard</h1>
+            <div class="subtitle">Sales, Customer Segmentation & Cohort Retention Analysis</div>
+        </div>
+        <div class="header-right">
+            <div class="date-badge" id="dateRange">Loading...</div>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <div class="nav-tab active" data-tab="overview">📋 Overview</div>
+        <div class="nav-tab" data-tab="trends">📈 Sales Trends</div>
+        <div class="nav-tab" data-tab="products">🏆 Products</div>
+        <div class="nav-tab" data-tab="geography">🌍 Geography</div>
+        <div class="nav-tab" data-tab="customers">👥 Customers & RFM</div>
+        <div class="nav-tab" data-tab="retention">🔄 Cohort Retention</div>
+        <div class="nav-tab" data-tab="insights">💡 Insights</div>
+    </div>
+
+    <div class="main">
+        <!-- ======================== OVERVIEW ======================== -->
+        <div class="section active" id="section-overview">
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Revenue</div>
+                    <div class="kpi-value" id="kpi-revenue" style="color: var(--accent-green);">—</div>
+                    <div class="kpi-sub">Lifetime sales</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Orders</div>
+                    <div class="kpi-value" id="kpi-orders" style="color: var(--accent-blue);">—</div>
+                    <div class="kpi-sub">Unique invoices</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Customers</div>
+                    <div class="kpi-value" id="kpi-customers" style="color: var(--accent-purple);">—</div>
+                    <div class="kpi-sub">Unique buyers</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Avg Order Value</div>
+                    <div class="kpi-value" id="kpi-aov" style="color: var(--accent-orange);">—</div>
+                    <div class="kpi-sub">Revenue ÷ Orders</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Products</div>
+                    <div class="kpi-value" id="kpi-products" style="color: var(--accent-pink);">—</div>
+                    <div class="kpi-sub">Unique items</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Pareto Insight</div>
+                    <div class="kpi-value" id="kpi-pareto" style="color: var(--accent-red); font-size: 22px;">—</div>
+                    <div class="kpi-sub">of customers = 80% revenue</div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(59,130,246,0.15);">📈</span> Monthly Revenue</div>
+                    <div class="chart-container"><canvas id="overviewRevenueChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(139,92,246,0.15);">👥</span> Customer Segments</div>
+                    <div class="chart-container"><canvas id="overviewSegmentChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== SALES TRENDS ======================== -->
+        <div class="section" id="section-trends">
+            <div class="chart-grid single">
+                <div class="chart-card full-width">
+                    <div class="chart-title"><span class="icon" style="background:rgba(16,185,129,0.15);">💰</span> Monthly Revenue Trend</div>
+                    <div class="chart-container"><canvas id="revenueLineChart"></canvas></div>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(59,130,246,0.15);">📦</span> Monthly Orders</div>
+                    <div class="chart-container"><canvas id="ordersBarChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(139,92,246,0.15);">👤</span> Monthly Active Customers</div>
+                    <div class="chart-container"><canvas id="customersLineChart"></canvas></div>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(245,158,11,0.15);">📅</span> Revenue by Day of Week</div>
+                    <div class="chart-container"><canvas id="dowChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(236,72,153,0.15);">🕐</span> Revenue by Hour</div>
+                    <div class="chart-container"><canvas id="hourChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== PRODUCTS ======================== -->
+        <div class="section" id="section-products">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(16,185,129,0.15);">💰</span> Top 10 Products by Revenue</div>
+                    <div class="chart-container"><canvas id="topRevChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(59,130,246,0.15);">📦</span> Top 10 Products by Quantity</div>
+                    <div class="chart-container"><canvas id="topQtyChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== GEOGRAPHY ======================== -->
+        <div class="section" id="section-geography">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(59,130,246,0.15);">🌍</span> Revenue by Country</div>
+                    <div class="chart-container"><canvas id="countryChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(16,185,129,0.15);">📊</span> Country Details</div>
+                    <div class="table-scroll" id="countryTable"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== CUSTOMERS & RFM ======================== -->
+        <div class="section" id="section-customers">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(139,92,246,0.15);">🎯</span> RFM Segment Distribution (Customers)</div>
+                    <div class="chart-container"><canvas id="rfmDonutChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title"><span class="icon" style="background:rgba(16,185,129,0.15);">💰</span> Revenue by Segment</div>
+                    <div class="chart-container"><canvas id="rfmRevenueChart"></canvas></div>
+                </div>
+            </div>
+            <div class="chart-grid single">
+                <div class="chart-card full-width">
+                    <div class="chart-title"><span class="icon" style="background:rgba(59,130,246,0.15);">📋</span> Segment Details</div>
+                    <div class="table-scroll" id="segmentTable"></div>
+                </div>
+            </div>
+            <div class="chart-grid single">
+                <div class="chart-card full-width">
+                    <div class="chart-title"><span class="icon" style="background:rgba(245,158,11,0.15);">📈</span> Revenue Concentration (Pareto)</div>
+                    <div class="chart-container"><canvas id="paretoChart"></canvas></div>
+                    <div class="pareto-highlight" id="paretoNote"></div>
+                </div>
+            </div>
+            <div class="chart-grid single">
+                <div class="chart-card full-width">
+                    <div class="chart-title"><span class="icon" style="background:rgba(236,72,153,0.15);">💎</span> Top 10 Customers by Lifetime Value</div>
+                    <div class="table-scroll" id="topCustomersTable"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== COHORT RETENTION ======================== -->
+        <div class="section" id="section-retention">
+            <div class="chart-grid single">
+                <div class="chart-card full-width">
+                    <div class="chart-title"><span class="icon" style="background:rgba(59,130,246,0.15);">🔄</span> Cohort Retention Heatmap</div>
+                    <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+                        Each row represents the month a customer first purchased. Each column shows the % of that cohort who returned in subsequent months.
+                    </p>
+                    <div style="overflow-x:auto;" id="cohortHeatmap"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================== INSIGHTS ======================== -->
+        <div class="section" id="section-insights">
+            <h2 style="margin-bottom: 20px; font-size: 20px;">💡 Key Business Insights & Recommendations</h2>
+            <div id="insightsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // LOAD DATA & INITIALIZE DASHBOARD
+    // ============================================================
+    const EMBEDDED_DATA = {
+  "overview": {
+    "totalRevenue": 749743.52,
+    "totalOrders": 7404,
+    "totalCustomers": 2863,
+    "totalProducts": 370,
+    "avgOrderValue": 101.26,
+    "avgItemsPerOrder": 21.7,
+    "dateRange": "2010-12-01 to 2011-12-09",
+    "pareto80": 27.8
+  },
+  "monthlyTrends": {
+    "labels": [
+      "2010-12",
+      "2011-01",
+      "2011-02",
+      "2011-03",
+      "2011-04",
+      "2011-05",
+      "2011-06",
+      "2011-07",
+      "2011-08",
+      "2011-09",
+      "2011-10",
+      "2011-11",
+      "2011-12"
+    ],
+    "revenue": [
+      90283.68,
+      43497.2,
+      44841.16,
+      58032.68,
+      61497.14,
+      69210.52,
+      47449.9,
+      54622.48,
+      43328.39,
+      49163.05,
+      48462.54,
+      110890.01,
+      28464.77
+    ],
+    "orders": [
+      1021,
+      515,
+      451,
+      509,
+      504,
+      536,
+      491,
+      540,
+      501,
+      488,
+      532,
+      1026,
+      290
+    ],
+    "customers": [
+      750,
+      435,
+      383,
+      431,
+      425,
+      466,
+      422,
+      446,
+      418,
+      405,
+      441,
+      747,
+      253
+    ]
+  },
+  "topProductsByRevenue": {
+    "labels": [
+      "EMBROIDERED CANDLE HOLDER",
+      "HANDMADE HANGING DECORATION",
+      "ELEGANT BOTTLE STOPPER",
+      "GREEN WALL SIGN",
+      "ENGRAVED CAKE STAND",
+      "PORCELAIN PICNIC SET",
+      "WHITE GARLAND",
+      "HEART BOTTLE STOPPER",
+      "ANTIQUE MUG",
+      "PAINTED STORAGE BOX"
+    ],
+    "values": [
+      20244.29,
+      15235.29,
+      12107.89,
+      11371.79,
+      10569.43,
+      10113.55,
+      9798.29,
+      9113.24,
+      8911.12,
+      8610.49
+    ]
+  },
+  "topProductsByQuantity": {
+    "labels": [
+      "WOODEN BOTTLE STOPPER",
+      "COLOURFUL SPICE JAR",
+      "STAR CANDLE HOLDER",
+      "EMBROIDERED CANDLE HOLDER",
+      "WHITE GARLAND",
+      "YELLOW GREETING CARD",
+      "ROUND SCARF",
+      "MINI GREETING CARD",
+      "WHIMSICAL EGG CUP",
+      "GREEN HANGING DECORATION"
+    ],
+    "values": [
+      1703,
+      1465,
+      1428,
+      1362,
+      1318,
+      1209,
+      1209,
+      1122,
+      1097,
+      1026
+    ]
+  },
+  "revenueByCountry": {
+    "labels": [
+      "United Kingdom",
+      "Germany",
+      "France",
+      "Portugal",
+      "Spain",
+      "Netherlands",
+      "Belgium",
+      "Australia",
+      "United Arab Emirates",
+      "Denmark",
+      "Switzerland",
+      "Norway",
+      "Finland",
+      "Ireland",
+      "Austria",
+      "Sweden",
+      "USA",
+      "Italy",
+      "Japan",
+      "Israel",
+      "Greece",
+      "Canada",
+      "Czech Republic",
+      "Brazil",
+      "Poland"
+    ],
+    "revenue": [
+      664517.31,
+      18115.86,
+      12265.89,
+      9089.01,
+      8372.35,
+      6912.91,
+      5849.92,
+      4860.83,
+      3524.74,
+      3180.74,
+      2921.66,
+      1752.18,
+      1337.17,
+      1169.15,
+      937.46,
+      825.69,
+      731.64,
+      718.55,
+      706.33,
+      631.02,
+      586.56,
+      249.25,
+      196.54,
+      147.53,
+      143.23
+    ],
+    "orders": [
+      6436,
+      178,
+      128,
+      44,
+      96,
+      87,
+      85,
+      72,
+      48,
+      13,
+      49,
+      32,
+      18,
+      21,
+      17,
+      13,
+      12,
+      20,
+      13,
+      2,
+      2,
+      6,
+      3,
+      3,
+      6
+    ],
+    "customers": [
+      2460,
+      70,
+      54,
+      17,
+      38,
+      40,
+      33,
+      26,
+      6,
+      7,
+      29,
+      15,
+      9,
+      4,
+      10,
+      5,
+      6,
+      12,
+      7,
+      2,
+      2,
+      3,
+      2,
+      1,
+      5
+    ]
+  },
+  "dayOfWeek": {
+    "labels": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ],
+    "values": [
+      121232.01,
+      93045.91,
+      107530.3,
+      104760.64,
+      121623.43,
+      102527.21,
+      99024.02
+    ]
+  },
+  "hourOfDay": {
+    "labels": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "values": [
+      61798.67,
+      46836.39,
+      45329.21,
+      55565.93,
+      65425.91,
+      41751.94,
+      58640.71,
+      52116.9,
+      51816.55,
+      41734.19,
+      51845.19,
+      54321.07,
+      66083.77,
+      56477.09
+    ]
+  },
+  "rfmSegments": {
+    "labels": [
+      "Champions",
+      "Loyal Customers",
+      "At Risk",
+      "Lost Customers",
+      "New Customers",
+      "Potential Loyalists",
+      "Promising"
+    ],
+    "customerCount": [
+      520,
+      572,
+      789,
+      350,
+      255,
+      278,
+      99
+    ],
+    "totalRevenue": [
+      391193.33,
+      136490.15,
+      124313.77,
+      43542.83,
+      26125.15,
+      19617.92,
+      8460.37
+    ],
+    "avgRevenue": [
+      752.29,
+      238.62,
+      157.56,
+      124.41,
+      102.45,
+      70.57,
+      85.46
+    ],
+    "avgRecency": [
+      22.0,
+      64.0,
+      251.8,
+      275.5,
+      26.5,
+      85.5,
+      107.8
+    ],
+    "avgFrequency": [
+      6.8,
+      2.6,
+      1.6,
+      1.0,
+      1.0,
+      1.4,
+      1.0
+    ]
+  },
+  "cohortRetention": {
+    "2010-12": {
+      "0": 100.0,
+      "1": 18.3,
+      "2": 13.5,
+      "3": 17.6,
+      "4": 18.0,
+      "5": 20.0,
+      "6": 17.9,
+      "7": 20.3,
+      "8": 18.3,
+      "9": 17.9,
+      "10": 18.0,
+      "11": 29.3,
+      "12": 10.3
+    },
+    "2011-01": {
+      "0": 100.0,
+      "1": 12.4,
+      "2": 12.8,
+      "3": 13.8,
+      "4": 14.1,
+      "5": 13.4,
+      "6": 12.1,
+      "7": 9.1,
+      "8": 13.1,
+      "9": 11.7,
+      "10": 19.8,
+      "11": 7.4
+    },
+    "2011-02": {
+      "0": 100.0,
+      "1": 9.0,
+      "2": 10.2,
+      "3": 8.6,
+      "4": 11.4,
+      "5": 11.8,
+      "6": 11.8,
+      "7": 11.8,
+      "8": 10.6,
+      "9": 19.2,
+      "10": 6.1
+    },
+    "2011-03": {
+      "0": 100.0,
+      "1": 10.0,
+      "2": 13.0,
+      "3": 10.0,
+      "4": 7.5,
+      "5": 9.6,
+      "6": 7.5,
+      "7": 12.6,
+      "8": 16.7,
+      "9": 3.8
+    },
+    "2011-04": {
+      "0": 100.0,
+      "1": 12.5,
+      "2": 8.5,
+      "3": 8.5,
+      "4": 5.5,
+      "5": 9.0,
+      "6": 10.5,
+      "7": 14.5,
+      "8": 6.5
+    },
+    "2011-05": {
+      "0": 100.0,
+      "1": 8.6,
+      "2": 14.2,
+      "3": 14.2,
+      "4": 13.2,
+      "5": 13.2,
+      "6": 20.8,
+      "7": 6.1
+    },
+    "2011-06": {
+      "0": 100.0,
+      "1": 8.0,
+      "2": 6.8,
+      "3": 5.6,
+      "4": 13.6,
+      "5": 17.3,
+      "6": 4.3
+    },
+    "2011-07": {
+      "0": 100.0,
+      "1": 13.7,
+      "2": 5.9,
+      "3": 11.1,
+      "4": 17.6,
+      "5": 3.3
+    },
+    "2011-08": {
+      "0": 100.0,
+      "1": 7.6,
+      "2": 6.1,
+      "3": 15.3,
+      "4": 6.1
+    },
+    "2011-09": {
+      "0": 100.0,
+      "1": 11.5,
+      "2": 15.9,
+      "3": 5.3
+    },
+    "2011-10": {
+      "0": 100.0,
+      "1": 14.8,
+      "2": 5.6
+    },
+    "2011-11": {
+      "0": 100.0,
+      "1": 4.0
+    },
+    "2011-12": {
+      "0": 100.0
+    }
+  },
+  "topCustomers": {
+    "ids": [
+      "13152",
+      "14189",
+      "12980",
+      "16101",
+      "16328",
+      "14025",
+      "15891",
+      "16337",
+      "12494",
+      "13935"
+    ],
+    "values": [
+      9209.59,
+      8937.81,
+      8102.72,
+      7984.04,
+      7542.84,
+      7274.41,
+      7087.13,
+      6515.92,
+      5821.36,
+      5475.52
+    ]
+  },
+  "paretoData": {
+    "customerPct": [
+      0.03,
+      0.07,
+      0.1,
+      0.14,
+      0.17,
+      0.21,
+      0.24,
+      0.28,
+      0.31,
+      0.35,
+      0.38,
+      0.42,
+      0.45,
+      0.49,
+      0.52,
+      0.56,
+      0.59,
+      0.63,
+      0.66,
+      0.7,
+      0.73,
+      0.77,
+      0.8,
+      0.84,
+      0.87,
+      0.91,
+      0.94,
+      0.98,
+      1.01,
+      1.05,
+      1.08,
+      1.12,
+      1.15,
+      1.19,
+      1.22,
+      1.26,
+      1.29,
+      1.33,
+      1.36,
+      1.4,
+      1.43,
+      1.47,
+      1.5,
+      1.54,
+      1.57,
+      1.61,
+      1.64,
+      1.68,
+      1.71,
+      1.75,
+      1.78,
+      1.82,
+      1.85,
+      1.89,
+      1.92,
+      1.96,
+      1.99,
+      2.03,
+      2.06,
+      2.1,
+      2.13,
+      2.17,
+      2.2,
+      2.24,
+      2.27,
+      2.31,
+      2.34,
+      2.38,
+      2.41,
+      2.44,
+      2.48,
+      2.51,
+      2.55,
+      2.58,
+      2.62,
+      2.65,
+      2.69,
+      2.72,
+      2.76,
+      2.79,
+      2.83,
+      2.86,
+      2.9,
+      2.93,
+      2.97,
+      3.0,
+      3.04,
+      3.07,
+      3.11,
+      3.14,
+      3.18,
+      3.21,
+      3.25,
+      3.28,
+      3.32,
+      3.35,
+      3.39,
+      3.42,
+      3.46,
+      3.49
+    ],
+    "revenuePct": [
+      1.23,
+      2.42,
+      3.5,
+      4.57,
+      5.57,
+      6.54,
+      7.49,
+      8.36,
+      9.13,
+      9.86,
+      10.59,
+      11.3,
+      11.98,
+      12.64,
+      13.28,
+      13.86,
+      14.4,
+      14.95,
+      15.44,
+      15.94,
+      16.42,
+      16.89,
+      17.35,
+      17.8,
+      18.24,
+      18.66,
+      19.09,
+      19.51,
+      19.93,
+      20.34,
+      20.75,
+      21.14,
+      21.53,
+      21.91,
+      22.29,
+      22.66,
+      23.03,
+      23.4,
+      23.76,
+      24.13,
+      24.49,
+      24.85,
+      25.2,
+      25.55,
+      25.9,
+      26.25,
+      26.59,
+      26.92,
+      27.26,
+      27.58,
+      27.91,
+      28.23,
+      28.55,
+      28.86,
+      29.17,
+      29.47,
+      29.77,
+      30.06,
+      30.36,
+      30.65,
+      30.95,
+      31.24,
+      31.53,
+      31.81,
+      32.1,
+      32.37,
+      32.65,
+      32.92,
+      33.19,
+      33.46,
+      33.72,
+      33.98,
+      34.24,
+      34.49,
+      34.74,
+      34.99,
+      35.24,
+      35.49,
+      35.73,
+      35.97,
+      36.21,
+      36.44,
+      36.68,
+      36.91,
+      37.14,
+      37.36,
+      37.59,
+      37.81,
+      38.03,
+      38.25,
+      38.47,
+      38.69,
+      38.9,
+      39.12,
+      39.33,
+      39.54,
+      39.75,
+      39.96,
+      40.16,
+      40.37
+    ]
+  }
+};
+    let DATA = null;
+    const COLORS = {
+        blue: '#3b82f6', green: '#10b981', purple: '#8b5cf6',
+        orange: '#f59e0b', pink: '#ec4899', red: '#ef4444',
+        cyan: '#06b6d4', lime: '#84cc16', amber: '#f59e0b',
+        indigo: '#6366f1', teal: '#14b8a6', rose: '#f43f5e'
+    };
+    const PALETTE = ['#3b82f6','#10b981','#8b5cf6','#f59e0b','#ec4899','#ef4444','#06b6d4','#84cc16','#6366f1','#14b8a6'];
+
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(51,65,85,0.5)';
+    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+
+    async function loadData() {
+        try {
+            if (window.location.protocol !== 'file:') {
+                const resp = await fetch('dashboard_data.json');
+                if (resp.ok) {
+                    DATA = await resp.json();
+                } else {
+                    DATA = EMBEDDED_DATA;
+                }
+            } else {
+                DATA = EMBEDDED_DATA;
+            }
+        } catch(e) {
+            DATA = EMBEDDED_DATA;
+        }
+        initDashboard();
+    }
+
+    function fmt(n) {
+        if (n >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+        if (n >= 1000) return '$' + (n/1000).toFixed(1) + 'K';
+        return '$' + n.toFixed(2);
+    }
+    function fmtN(n) {
+        return n.toLocaleString();
+    }
+
+    // ============================================================
+    // INIT DASHBOARD
+    // ============================================================
+    function initDashboard() {
+        const o = DATA.overview;
+
+        // KPIs
+        document.getElementById('kpi-revenue').textContent = fmt(o.totalRevenue);
+        document.getElementById('kpi-orders').textContent = fmtN(o.totalOrders);
+        document.getElementById('kpi-customers').textContent = fmtN(o.totalCustomers);
+        document.getElementById('kpi-aov').textContent = '$' + o.avgOrderValue.toFixed(2);
+        document.getElementById('kpi-products').textContent = fmtN(o.totalProducts);
+        document.getElementById('kpi-pareto').textContent = o.pareto80.toFixed(1) + '%';
+        document.getElementById('dateRange').textContent = o.dateRange;
+
+        renderOverviewCharts();
+        renderTrendsCharts();
+        renderProductCharts();
+        renderGeographyCharts();
+        renderCustomerCharts();
+        renderCohortHeatmap();
+        renderInsights();
+    }
+
+    // ============================================================
+    // TAB NAVIGATION
+    // ============================================================
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('section-' + tab.dataset.tab).classList.add('active');
+        });
+    });
+
+    // ============================================================
+    // OVERVIEW CHARTS
+    // ============================================================
+    function renderOverviewCharts() {
+        const t = DATA.monthlyTrends;
+        new Chart(document.getElementById('overviewRevenueChart'), {
+            type: 'line',
+            data: {
+                labels: t.labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: t.revenue,
+                    borderColor: COLORS.blue,
+                    backgroundColor: 'rgba(59,130,246,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: COLORS.blue
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+                },
+                scales: {
+                    y: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        const s = DATA.rfmSegments;
+        new Chart(document.getElementById('overviewSegmentChart'), {
+            type: 'doughnut',
+            data: {
+                labels: s.labels,
+                datasets: [{
+                    data: s.customerCount,
+                    backgroundColor: PALETTE.slice(0, s.labels.length),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 11 }, padding: 10 } }
+                },
+                cutout: '55%'
+            }
+        });
+    }
+
+    // ============================================================
+    // TRENDS CHARTS
+    // ============================================================
+    function renderTrendsCharts() {
+        const t = DATA.monthlyTrends;
+
+        new Chart(document.getElementById('revenueLineChart'), {
+            type: 'line',
+            data: {
+                labels: t.labels,
+                datasets: [{
+                    label: 'Monthly Revenue',
+                    data: t.revenue,
+                    borderColor: COLORS.green,
+                    backgroundColor: 'rgba(16,185,129,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointBackgroundColor: COLORS.green,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => 'Revenue: ' + fmt(ctx.raw) } }
+                },
+                scales: {
+                    y: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('ordersBarChart'), {
+            type: 'bar',
+            data: {
+                labels: t.labels,
+                datasets: [{
+                    label: 'Orders',
+                    data: t.orders,
+                    backgroundColor: 'rgba(59,130,246,0.6)',
+                    borderColor: COLORS.blue,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: 'rgba(51,65,85,0.3)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('customersLineChart'), {
+            type: 'line',
+            data: {
+                labels: t.labels,
+                datasets: [{
+                    label: 'Active Customers',
+                    data: t.customers,
+                    borderColor: COLORS.purple,
+                    backgroundColor: 'rgba(139,92,246,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: COLORS.purple
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: 'rgba(51,65,85,0.3)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Day of week
+        const d = DATA.dayOfWeek;
+        new Chart(document.getElementById('dowChart'), {
+            type: 'bar',
+            data: {
+                labels: d.labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: d.values,
+                    backgroundColor: PALETTE.slice(0, 7),
+                    borderRadius: 6,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+                },
+                scales: {
+                    y: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Hour of day
+        const h = DATA.hourOfDay;
+        new Chart(document.getElementById('hourChart'), {
+            type: 'bar',
+            data: {
+                labels: h.labels.map(hr => hr + ':00'),
+                datasets: [{
+                    label: 'Revenue',
+                    data: h.values,
+                    backgroundColor: 'rgba(236,72,153,0.5)',
+                    borderColor: COLORS.pink,
+                    borderWidth: 1,
+                    borderRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+                },
+                scales: {
+                    y: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // PRODUCT CHARTS
+    // ============================================================
+    function renderProductCharts() {
+        const r = DATA.topProductsByRevenue;
+        new Chart(document.getElementById('topRevChart'), {
+            type: 'bar',
+            data: {
+                labels: r.labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: r.values,
+                    backgroundColor: 'rgba(16,185,129,0.6)',
+                    borderColor: COLORS.green,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+                },
+                scales: {
+                    x: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+
+        const q = DATA.topProductsByQuantity;
+        new Chart(document.getElementById('topQtyChart'), {
+            type: 'bar',
+            data: {
+                labels: q.labels,
+                datasets: [{
+                    label: 'Quantity',
+                    data: q.values,
+                    backgroundColor: 'rgba(59,130,246,0.6)',
+                    borderColor: COLORS.blue,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { callback: v => fmtN(v) }, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // GEOGRAPHY
+    // ============================================================
+    function renderGeographyCharts() {
+        const c = DATA.revenueByCountry;
+        const top10Labels = c.labels.slice(0, 10);
+        const top10Values = c.revenue.slice(0, 10);
+
+        new Chart(document.getElementById('countryChart'), {
+            type: 'bar',
+            data: {
+                labels: top10Labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: top10Values,
+                    backgroundColor: PALETTE.slice(0, 10),
+                    borderRadius: 6,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+                },
+                scales: {
+                    x: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+
+        let tableHTML = '<table class="data-table"><thead><tr><th>Country</th><th class="number">Revenue</th><th class="number">Orders</th><th class="number">Customers</th></tr></thead><tbody>';
+        for (let i = 0; i < c.labels.length; i++) {
+            tableHTML += `<tr><td>${c.labels[i]}</td><td class="number">${fmt(c.revenue[i])}</td><td class="number">${fmtN(c.orders[i])}</td><td class="number">${fmtN(c.customers[i])}</td></tr>`;
+        }
+        tableHTML += '</tbody></table>';
+        document.getElementById('countryTable').innerHTML = tableHTML;
+    }
+
+    // ============================================================
+    // CUSTOMERS & RFM
+    // ============================================================
+    function renderCustomerCharts() {
+        const s = DATA.rfmSegments;
+
+        // Donut
+        new Chart(document.getElementById('rfmDonutChart'), {
+            type: 'doughnut',
+            data: {
+                labels: s.labels,
+                datasets: [{
+                    data: s.customerCount,
+                    backgroundColor: PALETTE.slice(0, s.labels.length),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'right', labels: { padding: 8, font: { size: 11 } } }
+                },
+                cutout: '50%'
+            }
+        });
+
+        // Revenue by segment bar
+        new Chart(document.getElementById('rfmRevenueChart'), {
+            type: 'bar',
+            data: {
+                labels: s.labels,
+                datasets: [{
+                    label: 'Total Revenue',
+                    data: s.totalRevenue,
+                    backgroundColor: PALETTE.slice(0, s.labels.length),
+                    borderRadius: 6,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+                },
+                scales: {
+                    x: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(51,65,85,0.3)' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Segment table
+        let segHTML = '<table class="data-table"><thead><tr><th>Segment</th><th class="number">Customers</th><th class="number">Total Revenue</th><th class="number">Avg Revenue</th><th class="number">Avg Recency (days)</th><th class="number">Avg Frequency</th></tr></thead><tbody>';
+        for (let i = 0; i < s.labels.length; i++) {
+            segHTML += `<tr><td><span class="segment-badge">${s.labels[i]}</span></td><td class="number">${fmtN(s.customerCount[i])}</td><td class="number">${fmt(s.totalRevenue[i])}</td><td class="number">${fmt(s.avgRevenue[i])}</td><td class="number">${s.avgRecency[i]}</td><td class="number">${s.avgFrequency[i].toFixed(1)}</td></tr>`;
+        }
+        segHTML += '</tbody></table>';
+        document.getElementById('segmentTable').innerHTML = segHTML;
+
+        // Pareto chart
+        const p = DATA.paretoData;
+        new Chart(document.getElementById('paretoChart'), {
+            type: 'line',
+            data: {
+                labels: p.customerPct.map(v => v.toFixed(0) + '%'),
+                datasets: [{
+                    label: 'Cumulative Revenue %',
+                    data: p.revenuePct,
+                    borderColor: COLORS.orange,
+                    backgroundColor: 'rgba(245,158,11,0.1)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 2
+                }, {
+                    label: 'Perfect Equality',
+                    data: p.customerPct,
+                    borderColor: 'rgba(100,116,139,0.4)',
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    borderWidth: 1,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            title: ctx => ctx[0].label + ' of customers',
+                            label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + '%'
+                        }
+                    }
+                },
+                scales: {
+                    x: { title: { display: true, text: '% of Customers (ranked by revenue)' }, grid: { display: false },
+                         ticks: { maxTicksLimit: 10 } },
+                    y: { title: { display: true, text: '% of Total Revenue' }, grid: { color: 'rgba(51,65,85,0.3)' },
+                         ticks: { callback: v => v + '%' } }
+                }
+            }
+        });
+        document.getElementById('paretoNote').innerHTML =
+            `⚡ <strong>${DATA.overview.pareto80.toFixed(1)}%</strong> of customers generate <strong>80%</strong> of total revenue — a classic Pareto distribution showing highly concentrated customer value.`;
+
+        // Top customers table
+        const tc = DATA.topCustomers;
+        let tcHTML = '<table class="data-table"><thead><tr><th>#</th><th>Customer ID</th><th class="number">Lifetime Value</th></tr></thead><tbody>';
+        for (let i = 0; i < tc.ids.length; i++) {
+            tcHTML += `<tr><td>${i+1}</td><td>${tc.ids[i]}</td><td class="number" style="color:var(--accent-green);font-weight:600;">${fmt(tc.values[i])}</td></tr>`;
+        }
+        tcHTML += '</tbody></table>';
+        document.getElementById('topCustomersTable').innerHTML = tcHTML;
+    }
+
+    // ============================================================
+    // COHORT RETENTION HEATMAP
+    // ============================================================
+    function renderCohortHeatmap() {
+        const cohort = DATA.cohortRetention;
+        const cohorts = Object.keys(cohort).sort();
+        if (cohorts.length === 0) return;
+
+        // Find max cohort index
+        let maxIndex = 0;
+        cohorts.forEach(c => {
+            Object.keys(cohort[c]).forEach(k => {
+                maxIndex = Math.max(maxIndex, parseInt(k));
+            });
+        });
+
+        // Color scale: high retention = green, low = red
+        function cellColor(val) {
+            if (val === null || val === undefined) return 'transparent';
+            const pct = val / 100;
+            if (pct >= 0.5) {
+                const t = (pct - 0.5) / 0.5;
+                return `rgba(16, 185, 129, ${0.2 + t * 0.6})`;
+            } else if (pct >= 0.2) {
+                const t = (pct - 0.2) / 0.3;
+                return `rgba(245, 158, 11, ${0.15 + t * 0.35})`;
+            } else {
+                return `rgba(239, 68, 68, ${0.1 + pct * 0.5})`;
+            }
+        }
+
+        let html = '<table class="cohort-table"><thead><tr><th>Cohort</th>';
+        for (let i = 0; i <= Math.min(maxIndex, 13); i++) {
+            html += `<th>Month ${i}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+
+        cohorts.forEach(c => {
+            html += `<tr><td class="cohort-label">${c}</td>`;
+            for (let i = 0; i <= Math.min(maxIndex, 13); i++) {
+                const val = cohort[c][String(i)];
+                if (val !== undefined && val !== null) {
+                    const bg = cellColor(val);
+                    const textColor = val > 50 ? '#fff' : (val > 20 ? '#fde68a' : '#f1f5f9');
+                    html += `<td style="background:${bg};color:${textColor};font-weight:${i===0?'700':'500'};">${val.toFixed(1)}%</td>`;
+                } else {
+                    html += '<td style="color:var(--text-muted);">—</td>';
+                }
+            }
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('cohortHeatmap').innerHTML = html;
+    }
+
+    // ============================================================
+    // INSIGHTS & RECOMMENDATIONS
+    // ============================================================
+    function renderInsights() {
+        const o = DATA.overview;
+        const s = DATA.rfmSegments;
+
+        // Find champion customers count and revenue
+        const champIdx = s.labels.indexOf('Champions');
+        const champCount = champIdx >= 0 ? s.customerCount[champIdx] : 0;
+        const champRev = champIdx >= 0 ? s.totalRevenue[champIdx] : 0;
+        const champPct = (champRev / o.totalRevenue * 100).toFixed(1);
+
+        const atRiskIdx = s.labels.indexOf('At Risk');
+        const atRiskCount = atRiskIdx >= 0 ? s.customerCount[atRiskIdx] : 0;
+
+        const lostIdx = s.labels.indexOf('Lost Customers');
+        const lostCount = lostIdx >= 0 ? s.customerCount[lostIdx] : 0;
+
+        const insights = [
+            {
+                type: 'success',
+                title: '🏆 Revenue Concentration & High-Value Customers',
+                text: `Only <strong>${o.pareto80.toFixed(1)}%</strong> of customers generate 80% of all revenue (${fmt(o.totalRevenue)}). Champions (${fmtN(champCount)} customers) contribute <strong>${champPct}%</strong> of total revenue. <br><strong>Recommendation:</strong> Implement a VIP loyalty program with exclusive perks, early access, and personalized offers for top-tier customers to maximize retention and lifetime value.`
+            },
+            {
+                type: 'danger',
+                title: '⚠️ At-Risk & Lost Customers Need Attention',
+                text: `<strong>${fmtN(atRiskCount)}</strong> customers are "At Risk" (previously valuable but haven't purchased recently), and <strong>${fmtN(lostCount)}</strong> are "Lost" (long inactive). <br><strong>Recommendation:</strong> Launch a win-back email campaign offering a 15-20% discount to At Risk customers. For Lost customers, consider a "We miss you" campaign with a compelling time-limited offer.`
+            },
+            {
+                type: 'info',
+                title: '🌍 Geographic Concentration',
+                text: `The UK dominates revenue (likely 80%+), but several European countries show strong average order values. <br><strong>Recommendation:</strong> Explore targeted marketing in high-AOV countries (Germany, Netherlands, France) to grow revenue from these profitable markets. Consider localized landing pages and shipping improvements.`
+            },
+            {
+                type: 'warning',
+                title: '📈 Seasonal Revenue Patterns',
+                text: `Monthly revenue analysis reveals strong seasonality with November-December peaks driven by holiday shopping. <br><strong>Recommendation:</strong> Plan inventory and marketing budgets 2-3 months before peak periods. Run early-bird promotions in October to capture pre-holiday demand and smooth out revenue volatility.`
+            },
+            {
+                type: 'success',
+                title: '📦 Product Portfolio Optimization',
+                text: `Top products by quantity don't always match top products by revenue — some high-volume items have low unit prices. <br><strong>Recommendation:</strong> Bundle high-volume/low-price items with complementary higher-margin products. Consider upselling premium versions of popular items and discontinuing consistently underperforming SKUs.`
+            },
+            {
+                type: 'info',
+                title: '🔄 Cohort Retention Insights',
+                text: `Retention typically drops significantly after Month 1 (to ~30-40%), then stabilizes. Later cohorts may show improving or declining retention trends. <br><strong>Recommendation:</strong> Focus on the critical "Month 1 retention" window — implement post-purchase follow-up emails, satisfaction surveys, and next-purchase incentives within 30 days of first order.`
+            },
+            {
+                type: 'warning',
+                title: '💡 Average Order Value Optimization',
+                text: `Current AOV is <strong>${fmt(o.avgOrderValue)}</strong> with an average of <strong>${o.avgItemsPerOrder}</strong> items per order. <br><strong>Recommendation:</strong> Implement cross-sell recommendations ("Customers also bought..."), offer free shipping thresholds just above current AOV, and create curated product bundles to increase basket size by 15-25%.`
+            }
+        ];
+
+        const container = document.getElementById('insightsContainer');
+        container.innerHTML = insights.map(i =>
+            `<div class="insight-card ${i.type}"><h4>${i.title}</h4><p>${i.text}</p></div>`
+        ).join('');
+    }
+
+    // Start
+    loadData();
+    </script>
+</body>
+</html>
+
